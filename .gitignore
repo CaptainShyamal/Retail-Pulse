@@ -1,0 +1,32 @@
+# Environment variables & secrets
+.env
+*.env.local
+
+# Docker persistent data on D: drive
+.docker_data/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.pkl
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Data and Cache
+data/delta_lake/
+data/cache/
+*.db
+mlruns/
+data/mlruns/
+
+# Testing & Logs
+.pytest_cache/
+*.log
+
+# IDE
+.vscode/
+.idea/

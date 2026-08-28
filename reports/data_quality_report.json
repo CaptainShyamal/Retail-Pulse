@@ -1,0 +1,35 @@
+{
+    "total_records": 36550,
+    "passed": true,
+    "checks": {
+        "min_record_threshold": {
+            "passed": true,
+            "count": 36550
+        },
+        "schema_completeness": {
+            "passed": true,
+            "missing_columns": []
+        },
+        "null_rate_tolerance": {
+            "passed": true,
+            "null_rates": {
+                "store_id": 0.0,
+                "sku": 0.0,
+                "date": 0.0,
+                "qty_sold": 0.0,
+                "revenue": 0.0,
+                "avg_price": 0.0,
+                "avg_shelf_qty": 0.0,
+                "sentiment_score": 0.0,
+                "graph_co_stock_flag": 0.0,
+                "graph_substitute_available": 0.0
+            },
+            "violations": {}
+        },
+        "non_negative_bounds": {
+            "passed": true,
+            "negative_qty_count": 0,
+            "negative_revenue_count": 0
+        }
+    }
+}

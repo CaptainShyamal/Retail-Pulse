@@ -1,0 +1,23 @@
+[
+    {
+        "store_id": "STORE_001",
+        "sku": "SKU_001",
+        "start_date": "2025-06-01",
+        "end_date": "2025-06-05",
+        "type": "stockout_risk"
+    },
+    {
+        "store_id": "STORE_002",
+        "sku": "SKU_005",
+        "start_date": "2025-11-10",
+        "end_date": "2025-11-14",
+        "type": "stockout_risk"
+    },
+    {
+        "store_id": "STORE_003",
+        "sku": "SKU_010",
+        "start_date": "2025-03-15",
+        "end_date": "2025-03-15",
+        "type": "stockout_risk"
+    }
+]

@@ -1,0 +1,68 @@
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: retailpulse-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-retailpulse}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-changeme123}
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    volumes:
+      - ./.docker_data/minio:/data
+
+  postgres:
+    image: postgres:15
+    container_name: retailpulse-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-retailpulse}
+      POSTGRES_USER: ${POSTGRES_USER:-retailpulse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
+    restart: unless-stopped
+    volumes:
+      - ./.docker_data/postgres:/var/lib/postgresql/data
+
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:latest
+    container_name: retailpulse-redpanda
+    ports:
+      - "9092:9092"
+      - "9644:9644"
+    command:
+      - redpanda
+      - start
+      - --smp
+      - "1"
+      - --memory
+      - "512M"
+      - --overprovisioned
+      - --kafka-addr
+      - "PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092"
+      - --advertise-kafka-addr
+      - "PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092"
+    restart: unless-stopped
+    volumes:
+      - ./.docker_data/redpanda:/var/lib/redpanda/data
+
+  neo4j:
+    image: neo4j:5.19-community
+    container_name: retailpulse-neo4j
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/changeme123
+      - NEO4J_PLUGINS=["apoc"]
+    restart: unless-stopped
+    volumes:
+      - ./.docker_data/neo4j/data:/data
+      - ./.docker_data/neo4j/logs:/logs
+      - ./.docker_data/neo4j/import:/var/lib/neo4j/import
+      - ./.docker_data/neo4j/plugins:/plugins
+
+
+
