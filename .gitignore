@@ -19,6 +19,7 @@ env/
 # Data and Cache
 data/delta_lake/
 data/cache/
+data/uploads/
 *.db
 mlruns/
 data/mlruns/

@@ -45,7 +45,12 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-def train_xgboost_model(data_path: str = None, horizon: int = 14):
+def train_xgboost_model(
+    data_path: str = None,
+    horizon: int = 14,
+    output_model_path: str = None,
+    output_forecast_path: str = None
+):
     """
     Trains XGBoost regressor using time-based split.
     """
@@ -72,6 +77,8 @@ def train_xgboost_model(data_path: str = None, horizon: int = 14):
 
     # Clean rows with NaN lags
     train_valid_df = df_feat.dropna(subset=feature_cols).copy()
+    if len(train_valid_df) < 10:
+        raise ValueError("Insufficient rows after lag feature construction to train XGBoost model.")
 
     # Time-based train / validation split (hold out last 28 days for validation)
     max_date = train_valid_df["dt"].max()
@@ -79,6 +86,10 @@ def train_xgboost_model(data_path: str = None, horizon: int = 14):
 
     train_data = train_valid_df[train_valid_df["dt"] <= split_date]
     val_data = train_valid_df[train_valid_df["dt"] > split_date]
+
+    if len(train_data) == 0:
+        train_data = train_valid_df.iloc[:int(len(train_valid_df)*0.8)]
+        val_data = train_valid_df.iloc[int(len(train_valid_df)*0.8):]
 
     X_train, y_train = train_data[feature_cols], train_data["qty_sold"]
     X_val, y_val = val_data[feature_cols], val_data["qty_sold"]
@@ -109,7 +120,10 @@ def train_xgboost_model(data_path: str = None, horizon: int = 14):
     
     # Calculate non-zero MAPE
     mask = y_val > 0
-    mape = np.mean(np.abs((y_val[mask] - val_preds[mask]) / y_val[mask])) * 100
+    if np.any(mask):
+        mape = np.mean(np.abs((y_val[mask] - val_preds[mask]) / y_val[mask])) * 100
+    else:
+        mape = 0.0
 
     print("=" * 60)
     print(f"XGBoost Validation Metrics:")
@@ -119,24 +133,23 @@ def train_xgboost_model(data_path: str = None, horizon: int = 14):
     print("=" * 60)
 
     # Save model artifact
-    models_dir = os.path.join(PROJECT_ROOT, "data", "models", "xgboost")
-    os.makedirs(models_dir, exist_ok=True)
-    model_path = os.path.join(models_dir, "xgboost_demand.pkl")
+    model_path = output_model_path or os.path.join(PROJECT_ROOT, "data", "models", "xgboost", "xgboost_demand.pkl")
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
     with open(model_path, "wb") as f:
-        pickle.dump({
-            "model": model,
-            "feature_cols": feature_cols,
-            "metrics": {"mae": mae, "rmse": rmse, "mape": mape}
-        }, f)
+        pickle.dump(model, f)
     print(f"Model artifact saved to: {model_path}")
 
-    # Generate forward predictions for next `horizon` days
+    # Generate 14-day forward forecast using recursive autoregression
     latest_date = df_feat["dt"].max()
     future_records = []
-    
+
     for (st, sk), group in df_feat.groupby(["store_id", "sku"]):
-        last_row = group.iloc[-1].copy()
-        current_lags = list(group["qty_sold"].values[-28:])
+        group = group.sort_values(by="dt")
+        last_row = group.iloc[-1]
+        
+        # Prepare historical lag window
+        history_qty = group["qty_sold"].values.tolist()
+        current_lags = list(history_qty[-28:]) if len(history_qty) >= 28 else ([history_qty[-1]] * (28 - len(history_qty)) + history_qty)
         last_shelf = last_row["avg_shelf_qty"]
         sentiment = last_row["sentiment_score"]
 
@@ -191,7 +204,7 @@ def train_xgboost_model(data_path: str = None, horizon: int = 14):
             current_lags.append(pred_val)
 
     df_future = pd.DataFrame(future_records)
-    out_preds_path = os.path.join(PROJECT_ROOT, "data", "predictions", "forecast.parquet")
+    out_preds_path = output_forecast_path or os.path.join(PROJECT_ROOT, "data", "predictions", "forecast.parquet")
     os.makedirs(os.path.dirname(out_preds_path), exist_ok=True)
     df_future.to_parquet(out_preds_path, index=False)
     print(f"Saved {len(df_future)} XGBoost forecasts to: {out_preds_path}")
@@ -221,7 +234,8 @@ def train_xgboost_model(data_path: str = None, horizon: int = 14):
     except Exception as e:
         print(f"Notice: MLflow logging skipped ({e})")
 
-    return model, df_future
+    metrics_dict = {"mae": float(mae), "rmse": float(rmse), "mape": float(mape)}
+    return model, df_future, metrics_dict
 
 if __name__ == "__main__":
     train_xgboost_model()

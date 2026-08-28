@@ -14,25 +14,40 @@ if PROJECT_ROOT not in sys.path:
 
 from transform.spark_jobs.sentiment_feature import compute_sentiment_scores
 
-def clean_and_join_lakehouse():
+def clean_and_join_lakehouse(
+    sales_raw_path: str = None,
+    output_parquet_path: str = None,
+    output_csv_path: str = None,
+    output_delta_dir: str = None
+):
     """
     Cleans raw sales & IoT sensor records, performs daily aggregations,
     enriches with sentiment, and writes out to Delta Lake & Parquet lakehouse layers.
     """
+    if sales_raw_path is None:
+        sales_raw_path = os.path.join(PROJECT_ROOT, "data", "raw_sample", "sales_raw.csv")
+    if output_parquet_path is None:
+        output_parquet_path = os.path.join(PROJECT_ROOT, "data", "curated", "sales_daily.parquet")
+    if output_csv_path is None:
+        output_csv_path = os.path.join(PROJECT_ROOT, "data", "curated", "sales_daily.csv")
+    if output_delta_dir is None:
+        output_delta_dir = os.path.join(PROJECT_ROOT, "data", "delta_lake", "curated_sales_daily")
+
     print("=" * 60)
     print("Starting RetailPulse Lakehouse Transformation Pipeline")
+    print(f"Input: {sales_raw_path}")
+    print(f"Output Parquet: {output_parquet_path}")
     print("=" * 60)
 
     # 1. Load sentiment scores
     sentiment_map = compute_sentiment_scores()
 
     # 2. Load sales events
-    sales_path = os.path.join(PROJECT_ROOT, "data", "raw_sample", "sales_raw.csv")
-    if not os.path.exists(sales_path):
-        raise FileNotFoundError(f"Sales raw file not found at {sales_path}")
+    if not os.path.exists(sales_raw_path):
+        raise FileNotFoundError(f"Sales raw file not found at {sales_raw_path}")
 
-    print(f"Loading raw sales events from {sales_path}...")
-    df_sales = pd.read_csv(sales_path)
+    print(f"Loading raw sales events from {sales_raw_path}...")
+    df_sales = pd.read_csv(sales_raw_path)
     initial_sales_count = len(df_sales)
 
     # Null handling rule per spec:
@@ -58,10 +73,9 @@ def clean_and_join_lakehouse():
     print(f"Aggregated {initial_sales_count} raw sales into {len(daily_sales)} store-sku-day records.")
 
     # 3. Load or generate IoT shelf stock data if not available locally
-    # Check if we have IoT files or generate a local dataframe matching iot_generator logic
     iot_records = []
-    stores = [f"STORE_{i:03d}" for i in range(1, 6)]
-    skus = [f"SKU_{i:03d}" for i in range(1, 11)]
+    stores = sorted(daily_sales["store_id"].unique().tolist())
+    skus = sorted(daily_sales["sku"].unique().tolist())
     min_date = daily_sales["date"].min()
     max_date = daily_sales["date"].max()
 
@@ -88,7 +102,8 @@ def clean_and_join_lakehouse():
                 if is_anom:
                     shelf_qty = float(np.random.choice([0.0, 1.0]))
                 else:
-                    base_qty = 25.0 + (int(sk.split("_")[1]) % 5) * 5.0
+                    sku_hash = sum(ord(c) for c in str(sk))
+                    base_qty = 25.0 + (sku_hash % 5) * 5.0
                     weekday_adj = -5.0 if cur_d.weekday() in [2, 3] else 0.0
                     shelf_qty = max(2.0, base_qty + weekday_adj + np.random.uniform(-3, 3))
                 
@@ -131,16 +146,15 @@ def clean_and_join_lakehouse():
     df_curated = df_curated.sort_values(by=["store_id", "sku", "date"]).reset_index(drop=True)
 
     # 7. Write to Lakehouse Storage
-    output_dir = os.path.join(PROJECT_ROOT, "data", "delta_lake", "curated_sales_daily")
-    parquet_path = os.path.join(PROJECT_ROOT, "data", "curated", "sales_daily.parquet")
-    csv_path = os.path.join(PROJECT_ROOT, "data", "curated", "sales_daily.csv")
-    
-    os.makedirs(output_dir, exist_ok=True)
-    os.makedirs(os.path.dirname(parquet_path), exist_ok=True)
+    os.makedirs(output_delta_dir, exist_ok=True)
+    os.makedirs(os.path.dirname(output_parquet_path), exist_ok=True)
+    if output_csv_path:
+        os.makedirs(os.path.dirname(output_csv_path), exist_ok=True)
 
     # Save fast Parquet & CSV copies
-    df_curated.to_parquet(parquet_path, index=False)
-    df_curated.to_csv(csv_path, index=False)
+    df_curated.to_parquet(output_parquet_path, index=False)
+    if output_csv_path:
+        df_curated.to_csv(output_csv_path, index=False)
 
     # Save Delta table using delta-spark if explicitly requested, or partitioned parquet
     if os.getenv("USE_SPARK", "false").lower() == "true":
@@ -154,15 +168,21 @@ def clean_and_join_lakehouse():
                 .getOrCreate()
                 
             spark_df = spark.createDataFrame(df_curated)
-            spark_df.write.format("delta").mode("overwrite").partitionBy("date").save(output_dir)
-            print(f"Successfully committed curated table to Delta Lake at: {output_dir}")
+            spark_df.write.format("delta").mode("overwrite").partitionBy("date").save(output_delta_dir)
+            print(f"Successfully committed curated table to Delta Lake at: {output_delta_dir}")
             spark.stop()
         except Exception as e:
             print(f"Notice: Spark Delta writer fallback ({e}). Partitioned Parquet lakehouse created.")
-            df_curated.to_parquet(output_dir, partition_cols=["date"], index=False)
+            df_curated.to_parquet(output_delta_dir, partition_cols=["date"], index=False)
     else:
-        df_curated.to_parquet(output_dir, partition_cols=["date"], index=False)
-        print(f"Partitioned Parquet lakehouse successfully saved at: {output_dir}")
+        df_curated.to_parquet(output_delta_dir, partition_cols=["date"], index=False)
+        print(f"Partitioned Parquet lakehouse successfully saved at: {output_delta_dir}")
+
+    print("=" * 60)
+    print(f"Lakehouse transform complete! Total Curated Records: {len(df_curated)}")
+    print(f"Columns: {list(df_curated.columns)}")
+    print("=" * 60)
+    return df_curated
 
     print("=" * 60)
     print(f"Lakehouse transform complete! Total Curated Records: {len(df_curated)}")

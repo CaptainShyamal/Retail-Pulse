@@ -8,7 +8,12 @@ from datetime import datetime
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-def detect_anomalies(data_path: str = None) -> pd.DataFrame:
+def detect_anomalies(
+    data_path: str = None,
+    output_parquet: str = None,
+    output_json: str = None,
+    output_csv: str = None
+) -> pd.DataFrame:
     """
     Scans curated sales & IoT shelf logs to detect:
     1. stockout_risk (Shelf stock dropping to critical level with active customer demand)
@@ -61,32 +66,32 @@ def detect_anomalies(data_path: str = None) -> pd.DataFrame:
                 "score": score,
                 "shelf_qty": shelf,
                 "qty_sold": qty,
-                "description": f"Shelf stock critically low ({shelf} units) with active store traffic (baseline demand: {expected_demand:.1f} units).",
+                "description": f"Shelf stock critically depleted ({shelf} units remaining) with expected demand {expected_demand:.1f} units. Restock needed.",
                 "acknowledged": False
             })
             anom_counter += 1
 
-        # 2. Check Demand Spike
-        elif z >= 2.8 and qty >= 25:
-            severity = "high" if z >= 3.5 else "medium"
-            score = round(z, 2)
+        # 2. Check Demand Spike (z >= 3.0 and volume >= 15)
+        elif z >= 3.0 and qty >= 15:
+            score = round(float(z), 2)
+            severity = "high" if z >= 4.0 else "medium"
             anomalies.append({
                 "id": f"ANOM_{anom_counter:04d}",
                 "store_id": st,
                 "sku": sk,
                 "date": date_str,
-                "ts": f"{date_str} 15:30:00",
+                "ts": f"{date_str} 14:30:00",
                 "anomaly_type": "demand_spike",
                 "severity": severity,
                 "score": score,
                 "shelf_qty": shelf,
                 "qty_sold": qty,
-                "description": f"Unusual sales spike of {qty} units (z-score: {z:.2f}, baseline: {expected_demand:.1f}).",
+                "description": f"Unusual demand surge of {qty} units sold (z-score: {z:.2f}, rolling mean: {expected_demand:.1f}). Potential promotion or event.",
                 "acknowledged": False
             })
             anom_counter += 1
 
-        # 3. Check Sensor Mismatch
+        # 3. Check Sensor Mismatch (High sales with zero change in high shelf reading)
         elif qty >= 20 and shelf >= 35.0:
             score = round(float(qty / shelf), 2)
             anomalies.append({
@@ -107,19 +112,23 @@ def detect_anomalies(data_path: str = None) -> pd.DataFrame:
 
     df_anom = pd.DataFrame(anomalies)
 
-    # Save to lakehouse/predictions
-    out_dir = os.path.join(PROJECT_ROOT, "data", "predictions")
-    os.makedirs(out_dir, exist_ok=True)
-    parquet_path = os.path.join(out_dir, "anomalies.parquet")
-    json_path = os.path.join(out_dir, "anomalies.json")
-    csv_path = os.path.join(out_dir, "anomalies.csv")
+    # Save to lakehouse/predictions or custom upload path
+    parquet_path = output_parquet or os.path.join(PROJECT_ROOT, "data", "predictions", "anomalies.parquet")
+    json_path = output_json or os.path.join(PROJECT_ROOT, "data", "predictions", "anomalies.json")
+    csv_path = output_csv or os.path.join(PROJECT_ROOT, "data", "predictions", "anomalies.csv")
 
+    os.makedirs(os.path.dirname(parquet_path), exist_ok=True)
     df_anom.to_parquet(parquet_path, index=False)
-    df_anom.to_json(json_path, orient="records", indent=4)
-    df_anom.to_csv(csv_path, index=False)
+    if json_path:
+        os.makedirs(os.path.dirname(json_path), exist_ok=True)
+        df_anom.to_json(json_path, orient="records", indent=4)
+    if csv_path:
+        os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+        df_anom.to_csv(csv_path, index=False)
 
     print(f"Detected {len(df_anom)} anomalies across series.")
-    print(f"Anomaly counts by type:\n{df_anom['anomaly_type'].value_counts().to_string()}")
+    if not df_anom.empty:
+        print(f"Anomaly counts by type:\n{df_anom['anomaly_type'].value_counts().to_string()}")
 
     # Validate against ground-truth injected anomalies
     validate_synthetic_anomalies(df_anom)
