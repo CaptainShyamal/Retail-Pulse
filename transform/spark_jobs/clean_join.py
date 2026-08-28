@@ -142,24 +142,27 @@ def clean_and_join_lakehouse():
     df_curated.to_parquet(parquet_path, index=False)
     df_curated.to_csv(csv_path, index=False)
 
-    # Save Delta table using delta-spark if available, or partitioned parquet
-    try:
-        from pyspark.sql import SparkSession
-        spark = SparkSession.builder \
-            .appName("RetailPulse-Transform") \
-            .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
-            .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
-            .config("spark.driver.memory", "2g") \
-            .getOrCreate()
-            
-        spark_df = spark.createDataFrame(df_curated)
-        spark_df.write.format("delta").mode("overwrite").partitionBy("date").save(output_dir)
-        print(f"Successfully committed curated table to Delta Lake at: {output_dir}")
-        spark.stop()
-    except Exception as e:
-        print(f"Notice: Spark Delta writer fallback ({e}). Partitioned Parquet lakehouse created.")
-        # Fallback to pandas partition
+    # Save Delta table using delta-spark if explicitly requested, or partitioned parquet
+    if os.getenv("USE_SPARK", "false").lower() == "true":
+        try:
+            from pyspark.sql import SparkSession
+            spark = SparkSession.builder \
+                .appName("RetailPulse-Transform") \
+                .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
+                .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
+                .config("spark.driver.memory", "2g") \
+                .getOrCreate()
+                
+            spark_df = spark.createDataFrame(df_curated)
+            spark_df.write.format("delta").mode("overwrite").partitionBy("date").save(output_dir)
+            print(f"Successfully committed curated table to Delta Lake at: {output_dir}")
+            spark.stop()
+        except Exception as e:
+            print(f"Notice: Spark Delta writer fallback ({e}). Partitioned Parquet lakehouse created.")
+            df_curated.to_parquet(output_dir, partition_cols=["date"], index=False)
+    else:
         df_curated.to_parquet(output_dir, partition_cols=["date"], index=False)
+        print(f"Partitioned Parquet lakehouse successfully saved at: {output_dir}")
 
     print("=" * 60)
     print(f"Lakehouse transform complete! Total Curated Records: {len(df_curated)}")
