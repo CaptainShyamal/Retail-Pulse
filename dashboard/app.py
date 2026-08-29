@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import textwrap
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -24,8 +25,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+def render_html(html_str: str):
+    """Renders HTML cleanly without Markdown interpreting indented lines as code blocks."""
+    if not html_str:
+        return
+    st.markdown(textwrap.dedent(html_str).strip(), unsafe_allow_html=True)
+
 # Apply Black, White & Blue CSS
-st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+render_html(CUSTOM_CSS)
 
 # 5-Store High-Contrast Palette for Dark Theme
 STORE_PALETTE = {
@@ -272,7 +279,7 @@ def load_demo_dataset():
 # ==================== STATE 1: AWAITING UPLOAD (LANDING PAGE) ====================
 _active_user_data = st.session_state.get("user_dataset", None) if hasattr(st, "session_state") else None
 if _active_user_data is None:
-    st.markdown(
+    render_html(
         """
         <div class="top-header-bar">
             <div class="header-brand">
@@ -284,19 +291,18 @@ if _active_user_data is None:
             </div>
             <span class="header-status-pill">● Ingestion Engine Ready</span>
         </div>
-        """,
-        unsafe_allow_html=True
+        """
     )
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    render_html("<br>")
 
     col_hero_left, col_hero_right = st.columns([1.6, 1])
 
     with col_hero_left:
         st.markdown("## 📊 **Upload Retail Sales Data (INR ₹)**")
-        st.markdown("<p style='color:#94A3B8; font-size:1.05rem; line-height:1.6;'>Upload any retail transaction export (<b>Excel .xlsx / .xls or CSV .csv</b>). The system will ingest the data, build Delta lakehouse partitions, train a 250-tree XGBoost champion model with 28-day lags, run holdout backtesting, and unlock the executive dashboard.</p>", unsafe_allow_html=True)
+        render_html("<p style='color:#94A3B8; font-size:1.05rem; line-height:1.6;'>Upload any retail transaction export (<b>Excel .xlsx / .xls or CSV .csv</b>). The system will ingest the data, build Delta lakehouse partitions, train a 250-tree XGBoost champion model with 28-day lags, run holdout backtesting, and unlock the executive dashboard.</p>")
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        render_html("<br>")
 
         uploaded_file = st.file_uploader(
             "📁 Drag & Drop or Browse Excel / CSV File (Requires 35+ Days of History)",
@@ -313,9 +319,9 @@ if _active_user_data is None:
                 else:
                     st.error(msg)
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("<div style='text-align:center; color:#64748B; font-weight:600;'>— OR TEST WITH SAMPLE DATASET —</div>", unsafe_allow_html=True)
-        st.markdown("<br>", unsafe_allow_html=True)
+        render_html("<br>")
+        render_html("<div style='text-align:center; color:#64748B; font-weight:600;'>— OR TEST WITH SAMPLE DATASET —</div>")
+        render_html("<br>")
 
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
@@ -342,7 +348,7 @@ if _active_user_data is None:
 
     with col_hero_right:
         st.markdown("### 🏬 **Retail Sample Catalog**")
-        st.markdown(
+        render_html(
             """
             <div class="panel-card-clean">
                 <p style="color:#F8FAFC; font-weight:700; margin-bottom:8px;">Supercenter Locations:</p>
@@ -363,8 +369,7 @@ if _active_user_data is None:
                     • Maggi Noodles Pack of 12 (₹168)
                 </p>
             </div>
-            """,
-            unsafe_allow_html=True
+            """
         )
 
 # ==================== STATE 2: ACTIVE DASHBOARD (POST-UPLOAD) ====================
@@ -385,7 +390,7 @@ else:
         badge_style = "color:#EF4444; background:rgba(239, 68, 68, 0.15); border:1px solid rgba(239, 68, 68, 0.35);" if active_stockout_count > 0 else "color:#10B981; background:rgba(16, 185, 129, 0.15); border:1px solid rgba(16, 185, 129, 0.35);"
         badge_text = f"{active_stockout_count} Current Stockout Alert{'s' if active_stockout_count != 1 else ''}" if active_stockout_count > 0 else "0 Current Stockout Alerts"
         
-        st.markdown(
+        render_html(
             f"""
             <div class="top-header-bar" style="margin-bottom:0.5rem;">
                 <div class="header-brand">
@@ -400,12 +405,11 @@ else:
                     <span style="font-size:0.8rem; font-weight:700; {badge_style} padding:4px 10px; border-radius:9999px;">{badge_text}</span>
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True
+            """
         )
 
     with col_head_right:
-        st.markdown("<div style='margin-top:14px;'></div>", unsafe_allow_html=True)
+        render_html("<div style='margin-top:14px;'></div>")
         if st.button("🔄 Upload Different Dataset", use_container_width=True):
             st.session_state.user_dataset = None
             st.session_state.dataset_meta = None
@@ -413,7 +417,7 @@ else:
             st.session_state.anomaly_dataset = None
             st.rerun()
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    render_html("<br>")
 
     # Top Navigation Tabs
     tab_overview, tab_forecast, tab_alerts, tab_data_table, tab_architecture = st.tabs([
@@ -434,7 +438,7 @@ else:
         mae_val = float(meta.get("xgb_mae", 2.08))
         history_len = meta.get("history_days", meta.get("total_rows", 365))
 
-        st.markdown(
+        render_html(
             f"""
             <div style="background:#111827; border:1px solid #1E293B; border-radius:12px; padding:0.75rem 1.2rem; margin-bottom:1.1rem; display:flex; justify-content:space-between; align-items:center;">
                 <div style="display:flex; align-items:center; gap:12px;">
@@ -447,8 +451,7 @@ else:
                     <span style="color:#94A3B8;">MAE: <b style="color:#A7F3D0;">{mae_val:.2f}</b></span>
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True
+            """
         )
 
         total_sales_units = int(df_sales["qty_sold"].sum())
@@ -459,72 +462,67 @@ else:
         k1, k2, k3, k4 = st.columns(4)
 
         with k1:
-            st.markdown(
+            render_html(
                 f"""
                 <div class="stat-card-clean blue-top">
                     <div class="stat-eyebrow-clean">TOTAL SALES VOLUME <span>🏬 {meta['stores_count']} Stores</span></div>
                     <div class="stat-val-clean">{total_sales_units:,} <span style="font-size:0.95rem; font-weight:600; color:#94A3B8;">units</span></div>
                     <div class="stat-sub-clean"><span style="color:#60A5FA; font-weight:700;">{meta['date_start']}</span> to <span style="color:#60A5FA; font-weight:700;">{meta['date_end']}</span></div>
                 </div>
-                """,
-                unsafe_allow_html=True
+                """
             )
 
         with k2:
-            st.markdown(
+            render_html(
                 f"""
                 <div class="stat-card-clean white-top">
                     <div class="stat-eyebrow-clean">GROSS TURNOVER <span>₹ INR</span></div>
                     <div class="stat-val-clean">{format_inr(total_rev)}</div>
                     <div class="stat-sub-clean"><span style="color:#FFFFFF; font-weight:700;">₹{(total_rev/total_sales_units if total_sales_units>0 else 185.0):.2f}</span> avg price per unit</div>
                 </div>
-                """,
-                unsafe_allow_html=True
+                """
             )
 
         with k3:
-            st.markdown(
+            render_html(
                 f"""
                 <div class="stat-card-clean cyan-top">
                     <div class="stat-eyebrow-clean">14-DAY FORECAST DEMAND <span>🔮 XGBoost</span></div>
                     <div class="stat-val-clean" style="color:#22D3EE;">{total_fcst_qty:,} <span style="font-size:0.95rem; font-weight:600; color:#94A3B8;">units</span></div>
                     <div class="stat-sub-clean"><span style="color:#06B6D4; font-weight:700;">Dynamic Projection</span> across {meta['skus_count']} SKUs</div>
                 </div>
-                """,
-                unsafe_allow_html=True
+                """
             )
 
         with k4:
             if active_stockout_count > 0:
-                st.markdown(
+                render_html(
                     f"""
                     <div class="stat-card-clean red-top">
                         <div class="stat-eyebrow-clean">CRITICAL RESTOCK ALERTS <span>🚨 Shelf Sensors</span></div>
                         <div class="stat-val-clean" style="color:#EF4444;">{active_stockout_count} <span style="font-size:0.95rem; font-weight:600; color:#FCA5A5;">items</span></div>
                         <div class="stat-sub-clean"><span style="color:#EF4444; font-weight:700;">Immediate Reorder</span> needed</div>
                     </div>
-                    """,
-                    unsafe_allow_html=True
+                    """
                 )
             else:
-                st.markdown(
+                render_html(
                     f"""
                     <div class="stat-card-clean green-top">
                         <div class="stat-eyebrow-clean">CRITICAL RESTOCK ALERTS <span>🚨 Shelf Sensors</span></div>
                         <div class="stat-val-clean" style="color:#10B981;">0 <span style="font-size:0.95rem; font-weight:600; color:#6EE7B7;">items</span></div>
                         <div class="stat-sub-clean"><span style="color:#10B981; font-weight:700;">All shelves stocked</span> — no reorder needed</div>
                     </div>
-                    """,
-                    unsafe_allow_html=True
+                    """
                 )
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        render_html("<br>")
 
         # 2-Column Responsive Body
         col_chart_area, col_side_area = st.columns([1.8, 1])
 
         with col_chart_area:
-            st.markdown(
+            render_html(
                 """
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                     <div style="font-size:1.15rem; font-weight:700; color:#FFFFFF;">📈 <b>Sales Demand Trajectory & 14-Day ML Forecast</b></div>
@@ -533,8 +531,7 @@ else:
                         <span style="font-size:0.75rem; font-weight:700; color:#22D3EE; letter-spacing:0.03em;">DYNAMIC INFERENCE ENGINE</span>
                     </div>
                 </div>
-                """,
-                unsafe_allow_html=True
+                """
             )
             st.caption("Historical daily volume overlaid with forward 14-day machine learning predictions:")
 
@@ -681,7 +678,7 @@ else:
 
             if active_stockout_count > 0:
                 for _, row in df_active_stockouts.head(5).iterrows():
-                    st.markdown(
+                    render_html(
                         f"""
                         <div class="action-row-item danger">
                             <div>
@@ -690,8 +687,7 @@ else:
                             </div>
                             <span style="background:rgba(239, 68, 68, 0.2); color:#EF4444; font-weight:700; font-size:0.72rem; padding:3px 8px; border-radius:4px; border:1px solid rgba(239, 68, 68, 0.4);">ACTION REQ</span>
                         </div>
-                        """,
-                        unsafe_allow_html=True
+                        """
                     )
             else:
                 st.success("✅ All store shelves currently have sufficient inventory!")
@@ -726,7 +722,7 @@ else:
 
     # ---------- TAB 2: 14-DAY DEMAND FORECAST ----------
     with tab_forecast:
-        st.markdown(
+        render_html(
             """
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                 <div style="font-size:1.35rem; font-weight:800; color:#FFFFFF;">📈 <b>14-Day Demand Forecast Explorer (INR ₹)</b></div>
@@ -735,10 +731,9 @@ else:
                     <span style="font-size:0.75rem; font-weight:700; color:#34D399; letter-spacing:0.03em;">ACTIVE SENSOR STREAM</span>
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True
+            """
         )
-        st.markdown("<p style='color:#94A3B8; margin-top:-6px;'>Select any store and SKU to inspect machine learning predictions, animated forecast rollouts, and shelf telemetry.</p>", unsafe_allow_html=True)
+        render_html("<p style='color:#94A3B8; margin-top:-6px;'>Select any store and SKU to inspect machine learning predictions, animated forecast rollouts, and shelf telemetry.</p>")
 
         stores = sorted(df_sales["store_id"].unique().tolist())
         skus = sorted(df_sales["sku"].unique().tolist())
@@ -890,7 +885,7 @@ else:
                 st.metric(f"Next {sel_horizon}-Day Forecast", f"{pred_data['forecast_qty'].sum():.0f} units" if not pred_data.empty else "N/A")
 
             # CSV Download
-            st.markdown("<br>", unsafe_allow_html=True)
+            render_html("<br>")
             if not pred_data.empty:
                 csv_bytes = pred_data[["date", "store_id", "sku", "forecast_qty", "lower_ci", "upper_ci"]].to_csv(index=False).encode('utf-8')
                 st.download_button(
@@ -903,7 +898,7 @@ else:
     # ---------- TAB 3: INVENTORY ANOMALIES FEED ----------
     with tab_alerts:
         st.markdown("## 🚨 **Inventory Anomaly Incident Feed**")
-        st.markdown("<p style='color:#94A3B8; margin-top:-10px;'>Live feed of empty shelves, sudden demand spikes, and sensor irregularities with real-time severity scoring.</p>", unsafe_allow_html=True)
+        render_html("<p style='color:#94A3B8; margin-top:-10px;'>Live feed of empty shelves, sudden demand spikes, and sensor irregularities with real-time severity scoring.</p>")
 
         if df_anom is None or df_anom.empty:
             st.success("✅ No inventory anomalies detected in the uploaded dataset.")
@@ -937,7 +932,7 @@ else:
                 delay_ms = min(idx * 35, 400)
                 c_text, c_btn = st.columns([4.2, 1])
                 with c_text:
-                    st.markdown(
+                    render_html(
                         f"""
                         <div class="incident-card" style="border-left:4px solid {badge_color}; animation-delay:{delay_ms}ms;">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -950,27 +945,26 @@ else:
                             <p style="color:#CBD5E1; font-size:0.86rem; margin:8px 0 6px 0; line-height:1.5;">{row['description']}</p>
                             <span style="color:#94A3B8; font-size:0.78rem;">Detected on <b>{row['date']}</b> • Anomaly Score: <b>{row['score']}</b> • Status: {'<span style="color:#10B981; font-weight:700;">✅ Resolved</span>' if is_ack else '<span style="color:#EF4444; font-weight:700;">🔴 Pending Review</span>'}</span>
                         </div>
-                        """,
-                        unsafe_allow_html=True
+                        """
                     )
                 with c_btn:
-                    st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
+                    render_html("<div style='margin-top:10px;'></div>")
                     if not is_ack:
                         if st.button("Acknowledge", key=f"ack_btn_{anom_id}", use_container_width=True):
                             st.session_state.anomaly_dataset.loc[st.session_state.anomaly_dataset["id"] == anom_id, "acknowledged"] = True
                             st.toast(f"Incident {anom_id} marked as acknowledged!", icon="✅")
                             st.rerun()
                     else:
-                        st.markdown("<p style='color:#10B981; font-weight:700; font-size:0.88rem; margin-top:14px; text-align:center;'>✓ Resolved</p>", unsafe_allow_html=True)
+                        render_html("<p style='color:#10B981; font-weight:700; font-size:0.88rem; margin-top:14px; text-align:center;'>✓ Resolved</p>")
 
     # ---------- TAB 4: RAW DATA TABLE & STATS ----------
     with tab_data_table:
         st.markdown("## 📄 **Uploaded Dataset Records & Schema Summary**")
-        st.markdown(f"<p style='color:#94A3B8; margin-top:-10px;'>Displaying first 100 rows of <b>{meta['file_name']}</b> ({meta['total_rows']:,} total records):</p>", unsafe_allow_html=True)
+        render_html(f"<p style='color:#94A3B8; margin-top:-10px;'>Displaying first 100 rows of <b>{meta['file_name']}</b> ({meta['total_rows']:,} total records):</p>")
 
         st.dataframe(df_sales.head(100), use_container_width=True, hide_index=True)
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        render_html("<br>")
         csv_full = df_sales.to_csv(index=False).encode('utf-8')
         st.download_button(
             label="📥 Download Standardized Dataset as CSV",
@@ -982,14 +976,14 @@ else:
     # ---------- TAB 5: SYSTEM ARCHITECTURE ----------
     with tab_architecture:
         st.markdown("## 🏛️ **System Architecture & Production ML Pipeline**")
-        st.markdown("<p style='color:#94A3B8; margin-top:-10px;'>A transparent, code-accurate view of the unified data engineering, machine learning, and operational serving architecture.</p>", unsafe_allow_html=True)
+        render_html("<p style='color:#94A3B8; margin-top:-10px;'>A transparent, code-accurate view of the unified data engineering, machine learning, and operational serving architecture.</p>")
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        render_html("<br>")
 
         col_mode_a, col_mode_b = st.columns(2)
 
         with col_mode_a:
-            st.markdown(
+            render_html(
                 """
                 <div class="panel-card-clean" style="border-left: 4px solid #3B82F6;">
                     <div style="font-size:1.05rem; font-weight:700; color:#FFFFFF; margin-bottom:8px;">
@@ -1005,12 +999,11 @@ else:
                         <b>• Data Quality Gate:</b> Automated schema validation, range checks, and null constraint enforcement.
                     </div>
                 </div>
-                """,
-                unsafe_allow_html=True
+                """
             )
 
         with col_mode_b:
-            st.markdown(
+            render_html(
                 """
                 <div class="panel-card-clean" style="border-left: 4px solid #06B6D4;">
                     <div style="font-size:1.05rem; font-weight:700; color:#FFFFFF; margin-bottom:8px;">
@@ -1026,12 +1019,11 @@ else:
                         <b>• Operational Serving:</b> Relational warehouse synchronization (<code>data/warehouse.db</code> / Postgres), FastAPI microservices (<code>:8001-:8003</code>), and interactive dashboard.
                     </div>
                 </div>
-                """,
-                unsafe_allow_html=True
+                """
             )
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown(
+        render_html("<br>")
+        render_html(
             """
             <div style="background:#111827; border:1px solid #1F2937; border-radius:12px; padding:14px 18px;">
                 <span style="font-weight:700; color:#FFFFFF; font-size:0.92rem;">💡 Architectural Flow Summary</span>
@@ -1040,6 +1032,5 @@ else:
                     <b>Interactive Dashboard:</b> <code>User Upload</code> → <code>In-Memory Processing</code> → <code>Feature Engineering</code> → <code>Forecast & Anomaly Engine</code> → <code>Streamlit BI</code>
                 </p>
             </div>
-            """,
-            unsafe_allow_html=True
+            """
         )
