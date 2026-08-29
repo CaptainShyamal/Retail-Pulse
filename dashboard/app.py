@@ -26,10 +26,14 @@ st.set_page_config(
 )
 
 def render_html(html_str: str):
-    """Renders HTML cleanly without Markdown interpreting indented lines as code blocks."""
+    """Renders HTML directly without Markdown parser converting nested indents into code blocks."""
     if not html_str:
         return
-    st.markdown(textwrap.dedent(html_str).strip(), unsafe_allow_html=True)
+    clean_html = "\n".join(line.strip() for line in html_str.strip().splitlines() if line.strip())
+    if hasattr(st, "html"):
+        st.html(clean_html)
+    else:
+        st.markdown(clean_html, unsafe_allow_html=True)
 
 # Apply Black, White & Blue CSS
 render_html(CUSTOM_CSS)
@@ -352,16 +356,15 @@ if _active_user_data is None:
             """
             <div class="panel-card-clean">
                 <p style="color:#F8FAFC; font-weight:700; margin-bottom:8px;">Supercenter Locations:</p>
-                <p style="color:#94A3B8; font-size:0.85rem; line-height:1.5;">
+                <p style="color:#94A3B8; font-size:0.85rem; line-height:1.6; margin-bottom:14px;">
                     • Mumbai (Bandra West)<br>
                     • Delhi (Connaught Place)<br>
                     • Bengaluru (Indiranagar)<br>
                     • Hyderabad (Hitec City)<br>
                     • Chennai (T.Nagar)
                 </p>
-                
-                <p style="color:#F8FAFC; font-weight:700; margin-bottom:8px; margin-top:14px;">Products & INR Pricing:</p>
-                <p style="color:#94A3B8; font-size:0.85rem; line-height:1.5;">
+                <p style="color:#F8FAFC; font-weight:700; margin-bottom:8px;">Products & INR Pricing:</p>
+                <p style="color:#94A3B8; font-size:0.85rem; line-height:1.6; margin-bottom:0;">
                     • Aashirvaad Atta 5kg (₹265)<br>
                     • India Gate Basmati 5kg (₹480)<br>
                     • Amul Butter 500g (₹275)<br>
