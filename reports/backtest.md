@@ -1,8 +1,8 @@
 # RetailPulse Demand Forecasting Backtest Report
 
-**Date of Run:** 2026-08-29 04:55:46  
+**Date of Run:** 2026-08-30 04:05:31  
 **Evaluation Strategy:** Time-based holdout (28 days)  
-**Test Window:** 2026-08-01 to 2026-08-29  
+**Test Window:** 2025-12-03 to 2025-12-31  
 **Total Test Records Evaluated:** 1400
 
 ---
@@ -11,39 +11,39 @@
 
 | Model | Architecture | Holdout MAPE | Holdout RMSE | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **Additive Baseline** | Seasonal Holt-Winters / Prophet | **23.76%** | **5.18** | Baseline |
-| **XGBoost (Primary)** | Gradient Boosted Trees + Lags + Sentiment + IoT + Neo4j Graph Features | **22.49%** | **4.82** | **Production Champion** |
+| **Additive Baseline** | Seasonal Holt-Winters / Prophet | **73.63%** | **3.36** | Baseline |
+| **XGBoost (Primary)** | Gradient Boosted Trees + Lags + Sentiment + IoT + Neo4j Graph Features | **62.07%** | **3.35** | **Production Champion** |
 
 ### Key Takeaways & Knowledge Graph Impact:
 - **Baseline (Phase 3 Baseline):** 61.47% MAPE, 3.35 RMSE.
-- **Graph-Enhanced XGBoost (Phase 7):** **22.49% MAPE, 4.82 RMSE**.
+- **Graph-Enhanced XGBoost (Phase 7):** **62.07% MAPE, 3.35 RMSE**.
 - Graph structural context (`graph_co_stock_freq`, `graph_substitute_available`) informs the model of substitute item availability and store co-stock patterns with zero lookahead data leakage.
 
 ---
 
 ## 2. Per-SKU Granular Performance
 
-| SKU                              | Baseline MAPE (%)   | XGBoost MAPE (%)   |   Baseline RMSE |   XGBoost RMSE | Winner   |
-|:---------------------------------|:--------------------|:-------------------|----------------:|---------------:|:---------|
-| SKU_001_Aashirvaad_Atta_5kg      | 22.01%              | 21.65%             |            3.96 |           3.72 | XGBoost  |
-| SKU_002_IndiaGate_Basmati_5kg    | 35.30%              | 29.51%             |            3.61 |           3.29 | XGBoost  |
-| SKU_003_Fortune_Sunflower_Oil_1L | 19.79%              | 17.45%             |            5.16 |           4.72 | XGBoost  |
-| SKU_004_Amul_Butter_500g         | 18.67%              | 18.69%             |            4.6  |           4.53 | Baseline |
-| SKU_005_Tata_Tea_Gold_500g       | 27.71%              | 28.07%             |            4.16 |           4.28 | Baseline |
-| SKU_006_Tata_Salt_1kg            | 16.79%              | 15.48%             |            7.41 |           6.72 | XGBoost  |
-| SKU_007_Toor_Dal_Premium_1kg     | 25.05%              | 25.46%             |            4.75 |           4.77 | Baseline |
-| SKU_008_Maggi_Noodles_12Pack     | 19.81%              | 17.98%             |            7.1  |           6.1  | XGBoost  |
-| SKU_009_Cadbury_Dairy_Milk_Silk  | 21.93%              | 20.73%             |            5.7  |           5.25 | XGBoost  |
-| SKU_010_Surf_Excel_Matic_2kg     | 30.64%              | 29.89%             |            3.73 |           3.7  | XGBoost  |
+| SKU     | Baseline MAPE (%)   | XGBoost MAPE (%)   |   Baseline RMSE |   XGBoost RMSE | Winner   |
+|:--------|:--------------------|:-------------------|----------------:|---------------:|:---------|
+| SKU_001 | 84.92%              | 64.40%             |            2.2  |           2.17 | XGBoost  |
+| SKU_002 | 68.37%              | 60.02%             |            4.59 |           4.84 | XGBoost  |
+| SKU_003 | 90.85%              | 79.99%             |            3.62 |           3.67 | XGBoost  |
+| SKU_004 | 72.17%              | 56.24%             |            1.24 |           1.15 | XGBoost  |
+| SKU_005 | 65.10%              | 54.28%             |            2.74 |           2.6  | XGBoost  |
+| SKU_006 | 88.39%              | 78.55%             |            2.21 |           2.42 | XGBoost  |
+| SKU_007 | 83.17%              | 72.29%             |            6.36 |           6.12 | XGBoost  |
+| SKU_008 | 62.64%              | 49.79%             |            1.25 |           1.24 | XGBoost  |
+| SKU_009 | 85.00%              | 80.41%             |            1.84 |           1.89 | XGBoost  |
+| SKU_010 | 73.18%              | 63.14%             |            3.86 |           3.78 | XGBoost  |
 
 ---
 
 ## 3. Success Metrics Summary
 
 - **Target Champion RMSE:** < 10.0
-- **Achieved Champion RMSE (XGBoost):** **4.82** [PASSED]
+- **Achieved Champion RMSE (XGBoost):** **3.35** [PASSED]
 - **Target Champion MAPE:** < 65.0% on discrete sparse retail transactions
-- **Achieved Champion MAPE (XGBoost):** **22.49%** [PASSED]
+- **Achieved Champion MAPE (XGBoost):** **62.07%** [PASSED]
 
 ---
 
